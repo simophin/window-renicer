@@ -1,22 +1,28 @@
 use std::collections::HashSet;
 use libc::pid_t;
-use sysinfo::{PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
+use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
 
-pub async fn find_all_descendants(needle: pid_t) -> anyhow::Result<Vec<pid_t>> {
+pub async fn find_process_tree(root: pid_t) -> anyhow::Result<Vec<pid_t>> {
     let system = System::new_with_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::new()));
     let process_map = system.processes();
 
-    let mut descendants = HashSet::new();
+    if !process_map.contains_key(&root.into()) {
+        return Ok(Default::default());
+    }
+
+    let mut tree = HashSet::new();
+    tree.insert(root);
 
     for (pid, p) in process_map {
+        if root.eq(&(*pid).into()) {
+            continue;
+        }
+
         let mut parent_pid = p.parent();
         loop {
             match parent_pid {
-                Some(ppid) if ppid.as_u32() == needle as u32 => {
-                    descendants.insert(pid.as_u32() as pid_t);
-                    break;
-                }
-                Some(ppid) if descendants.contains(&(ppid.as_u32() as pid_t)) => {
+                Some(ppid) if tree.contains(&ppid.into()) => {
+                    tree.insert((*pid).into());
                     break;
                 }
                 Some(ppid) => {
@@ -27,5 +33,5 @@ pub async fn find_all_descendants(needle: pid_t) -> anyhow::Result<Vec<pid_t>> {
         }
     }
 
-    Ok(descendants.into_iter().collect())
+    Ok(tree.into_iter().collect())
 }
