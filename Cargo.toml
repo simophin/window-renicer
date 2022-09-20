@@ -1,0 +1,17 @@
+[package]
+name = "window-renice"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zbus = "3"
+anyhow = "1"
+env_logger = "0"
+log = "0"
+async-std = { version = "1", features = ["default", "attributes", "async-process"] }
+libc = "0"
+errno = "0"
+signal-hook-async-std = "0"
+signal-hook = "0"

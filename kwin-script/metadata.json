@@ -1,0 +1,23 @@
+{
+  "KPlugin": {
+    "Name": "Window Renicer",
+    "Description": "Renice the process based on its window activation status",
+    "Icon": "preferences-system-windows",
+
+    "Authors": [
+      {
+        "Email": "kwin-script@fanchao.dev",
+        "Name": "Fanchao Liu"
+      }
+    ],
+    "Id": "window-renicer",
+    "ServiceTypes": [
+      "KWin/Script"
+    ],
+    "Version": "1.0",
+    "Licsense": "GPLv3",
+    "Website": "https://github.com/simophin-window-renice"
+  },
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js"
+}
