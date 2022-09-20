@@ -15,5 +15,6 @@ build() {
 package() {
     install -Dm0755 -t "$pkgdir/usr/bin/" "$srcdir/$pkgname/target/release/$pkgname"
     install -Dm0755 -t "$pkgdir/usr/lib/systemd/user" "$srcdir/$pkgname/window-renicer.service"
-    install -Dm0755 -t "$pkgdir/usr/share/kwin/scripts/" "$srcdir/$pkgname/kwin-script/window-renicer"
+    install -d "$pkgdir/usr/share/kwin/scripts"
+    cp -rv "$srcdir/$pkgname/kwin-script/window-renicer" "$pkgdir/usr/share/kwin/scripts/"
 }

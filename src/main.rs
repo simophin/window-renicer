@@ -1,16 +1,19 @@
+mod ptree;
+
 use std::collections::HashSet;
 use std::time::Instant;
 use async_std::prelude::StreamExt;
 
 use errno::errno;
-use libc::{c_int, id_t, PRIO_PROCESS, setpriority};
+use libc::{c_int, id_t, pid_t, PRIO_PROCESS, setpriority};
 use signal_hook_async_std::Signals;
 use zbus::{Connection, dbus_interface};
+use crate::ptree::find_all_descendants;
 
 const MAX_ACTIVATED: usize = 5;
 
 struct WindowInfo {
-    pid: id_t,
+    pid: pid_t,
     last_active_time: Instant,
 }
 
@@ -22,7 +25,7 @@ struct WindowRenicer {
 #[dbus_interface(name = "dev.fanchao.WindowRenicer")]
 impl WindowRenicer {
     async fn window_activated(&mut self, pid: &str) {
-        let pid: id_t = match pid.parse() {
+        let pid: pid_t = match pid.parse() {
             Ok(v) => v,
             Err(e) => {
                 log::error!("PID value {pid} is not a numerical value: {e:?}");
@@ -50,17 +53,21 @@ impl WindowRenicer {
         for (i, window) in self.windows.iter().enumerate() {
             let nice: c_int = (i as c_int - self.max_windows as c_int).min(0);
             let pid = window.pid;
-            log::info!("Setting process {pid}'s nice to {nice}");
-            let rc = unsafe {
-                setpriority(PRIO_PROCESS, pid, nice)
-            };
-            if rc < 0 {
-                let err = errno();
-                if err.0 == libc::ESRCH {
-                    dead_processes.insert(pid);
-                    log::info!("Process {pid} no longer exists. Removing");
-                } else {
-                    log::error!("Error setting nice on process: {pid}: {}", err);
+            let mut processes = find_all_descendants(pid).await.unwrap_or_default();
+            processes.push(pid);
+            for pid in processes {
+                log::info!("Setting process {pid}'s nice to {nice}");
+                let rc = unsafe {
+                    setpriority(PRIO_PROCESS, pid as id_t, nice)
+                };
+                if rc < 0 {
+                    let err = errno();
+                    if err.0 == libc::ESRCH {
+                        dead_processes.insert(pid);
+                        log::info!("Process {pid} no longer exists. Removing");
+                    } else {
+                        log::error!("Error setting nice on process: {pid}: {}", err);
+                    }
                 }
             }
         }
@@ -75,17 +82,17 @@ impl WindowRenicer {
         }
     }
 
-    async fn window_removed(&mut self, pid: &str) {
-        let pid: id_t = match pid.parse() {
-            Ok(v) => v,
-            Err(e) => {
-                log::error!("PID value {pid} is not a numerical value: {e:?}");
-                return;
-            }
-        };
+    async fn window_removed(&mut self, _pid: &str) {
+        // let pid: id_t = match pid.parse() {
+        //     Ok(v) => v,
+        //     Err(e) => {
+        //         log::error!("PID value {pid} is not a numerical value: {e:?}");
+        //         return;
+        //     }
+        // };
 
-        log::info!("Window PID = {pid} removed!");
-        self.windows.retain_mut(|info| info.pid != pid);
+        // log::info!("Window PID = {pid} removed!");
+        // self.windows.retain_mut(|info| info.pid != pid);
     }
 }
 
